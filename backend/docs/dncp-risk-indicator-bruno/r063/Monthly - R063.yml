@@ -1,0 +1,26 @@
+info:
+  name: Monthly - R063
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{HOST}}/r063/monthly"
+  params:
+    - name: year
+      value: "2023"
+      type: query
+      disabled: true
+    - name: buyer_id
+      value: ""
+      type: query
+      disabled: true
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: Serie temporal del indicador R063

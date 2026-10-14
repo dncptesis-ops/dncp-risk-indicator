@@ -1,0 +1,24 @@
+[project]
+name = "ocds-redflags-engine"
+version = "0.1.0"
+description = "Motor de análisis de riesgos (Red Flags) para datos en formato Open Contracting Data Standard (OCDS)."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "asyncpg>=0.31.0",
+    "fastapi>=0.135.1",
+    "flattentool>=0.28.0",
+    "pandas>=3.0.1",
+    "psycopg2-binary>=2.9.11",
+    "pydantic-settings>=2.13.1",
+    "pydantic>=2.12.5",
+    "pyyaml>=6.0.3",
+    "requests>=2.32.5",
+    "uvicorn>=0.41.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.0.3",
+]

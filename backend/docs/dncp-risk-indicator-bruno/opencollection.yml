@@ -1,0 +1,29 @@
+opencollection: 1.0.0
+
+info:
+  name: dncp-risk-indicator
+config:
+  proxy:
+    inherit: true
+    config:
+      protocol: http
+      hostname: ""
+      port: ""
+      auth:
+        username: ""
+        password: ""
+      bypassProxy: ""
+
+request:
+  variables:
+    - name: HOST
+      value: localhost:8000
+      disabled: true
+    - name: HOST
+      value: https://dncp-risk-indicator.onrender.com
+bundled: false
+extensions:
+  bruno:
+    ignore:
+      - node_modules
+      - .git

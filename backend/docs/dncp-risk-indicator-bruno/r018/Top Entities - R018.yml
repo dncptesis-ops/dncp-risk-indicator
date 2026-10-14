@@ -1,0 +1,39 @@
+info:
+  name: Top Entities - R018
+  type: http
+  seq: 3
+
+http:
+  method: GET
+  url: "{{HOST}}/r018/top-entities"
+  params:
+    - name: proc_method
+      value: open
+      type: query
+      description: open, selective
+      disabled: true
+    - name: year
+      value: "2022"
+      type: query
+      disabled: true
+    - name: buyer_id
+      value: DNCP-SICP-CODE-305
+      type: query
+      disabled: true
+    - name: limit
+      value: "10000"
+      type: query
+      disabled: true
+    - name: offset
+      value: "10"
+      type: query
+      disabled: true
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: Top entidades con mayor concentraciónde casos R018 - Licitaciones de único oferente

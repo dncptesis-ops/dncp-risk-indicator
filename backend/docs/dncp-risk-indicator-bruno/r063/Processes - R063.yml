@@ -1,0 +1,34 @@
+info:
+  name: Processes - R063
+  type: http
+  seq: 4
+
+http:
+  method: GET
+  url: "{{HOST}}/r063/processes"
+  params:
+    - name: year
+      value: "2023"
+      type: query
+      disabled: true
+    - name: buyer_id
+      value: ""
+      type: query
+      disabled: true
+    - name: limit
+      value: ""
+      type: query
+      disabled: true
+    - name: offset
+      value: ""
+      type: query
+      disabled: true
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: Listado contratos que activaron R063

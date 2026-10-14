@@ -1,0 +1,26 @@
+# ─── Python ────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+
+# ─── Entorno virtual local (binarios de macOS; rompería el contenedor Linux) ───
+.venv/
+
+# ─── Secretos y configuración local ───────────────────────
+.env
+.env.*
+
+# ─── Datos y salidas de debug (CSVs / JSONs de flatten-tool) ───
+data/
+
+# ─── Git y sistema ────────────────────────────────────────
+.git/
+.gitignore
+.DS_Store
+
+# ─── No hacen falta en la imagen ──────────────────────────
+tests/
+docs/

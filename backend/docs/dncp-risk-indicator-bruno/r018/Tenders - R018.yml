@@ -1,0 +1,43 @@
+info:
+  name: Tenders - R018
+  type: http
+  seq: 5
+
+http:
+  method: GET
+  url: "{{HOST}}/r018/tenders"
+  params:
+    - name: proc_method
+      value: open
+      type: query
+      description: open, selective
+      disabled: true
+    - name: year
+      value: "2026"
+      type: query
+      disabled: true
+    - name: buyer_id
+      value: DNCP-SICP-CODE-304
+      type: query
+      disabled: true
+    - name: limit
+      value: "100"
+      type: query
+      disabled: true
+    - name: offset
+      value: "0"
+      type: query
+      disabled: true
+    - name: supplier_id
+      value: PY-RUC-80087085-9
+      type: query
+      disabled: true
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: Listado de licitaciones que activaron la bandera R018 - Único oferente en procedimiento competitivo.
