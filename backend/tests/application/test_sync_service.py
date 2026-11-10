@@ -241,3 +241,109 @@ def test_checkpoint_naive_se_interpreta_como_utc(mock_flatten):
     assert params["fecha_desde"] == (CHECKPOINT - SYNC_LOOKBACK).astimezone(
         FUENTE_TZ
     ).isoformat(timespec="seconds")
+
+
+def _client_con_fechas_en_listado(paginas: list, fechas: dict, sin_descarga=()) -> MagicMock:
+    """Como `_client`, pero el listado trae la fecha de cada proceso y los ocids
+    de `sin_descarga` fallan al pedir el record."""
+    client = MagicMock()
+    client.search_processes.side_effect = [
+        {
+            "records": [
+                {"ocid": ocid, "compiledRelease": {"date": fechas[ocid]}}
+                for ocid in pagina
+            ],
+            "pagination": {"total_pages": len(paginas)},
+        }
+        for pagina in paginas
+    ]
+
+    def _get_record(ocid):
+        if ocid in sin_descarga:
+            raise ConnectionError("la API no respondió")
+        return _record_package(ocid, fechas[ocid])
+
+    client.get_record.side_effect = _get_record
+    return client
+
+
+def _flatten_que_falla_en(*ocids_rotos):
+    def _flatten(record_package):
+        if record_package["records"][0]["ocid"] in ocids_rotos:
+            raise ValueError("package corrupto")
+        return {"parties": "df"}
+
+    return _flatten
+
+
+@patch("src.application.sync_service.record_to_dataframes")
+def test_descarga_fallida_ancla_checkpoint_a_la_fecha_del_listado(mock_flatten):
+    """Un record que no se pudo descargar también ancla el checkpoint, con la
+    fecha del listado, aunque otro falle después con fecha conocida."""
+    db = _db()
+    fechas = {
+        "A": "2026-01-10T11:30:00Z",
+        "B": "2026-01-10T10:00:00Z",  # no se descarga
+        "C": "2026-01-10T11:00:00Z",  # se descarga pero falla al cargarse
+    }
+    client = _client_con_fechas_en_listado([["A", "B", "C"]], fechas, sin_descarga={"B"})
+    mock_flatten.side_effect = _flatten_que_falla_en("C")
+
+    procesados = _service(client, db).sync_once()
+
+    assert procesados == 1
+    cierre = db.finish_sync_run.call_args.kwargs
+    assert cierre["status"] == "failed"
+    assert "B" in cierre["error_message"] and "C" in cierre["error_message"]
+    # Ancla en B (10:00), no en C (11:00): si no, B quedaría fuera de la ventana.
+    assert cierre["last_release_date"] == datetime(2026, 1, 10, 10, 0, tzinfo=timezone.utc)
+
+
+@patch("src.application.sync_service.record_to_dataframes")
+def test_ejecucion_interrumpida_respeta_los_fallidos_previos(mock_flatten):
+    """Si la ejecución se corta, el checkpoint no pasa de un record que ya había fallado."""
+    db = _db()
+    fechas = {"A": "2026-01-10T11:30:00Z", "B": "2026-01-10T10:00:00Z"}
+    client = _client_con_fechas_en_listado([["A", "B"]], fechas)
+    # Hay dos páginas, pero la segunda no llega: la API deja de responder.
+    client.search_processes.side_effect = [
+        {
+            "records": [
+                {"ocid": o, "compiledRelease": {"date": fechas[o]}} for o in ("A", "B")
+            ],
+            "pagination": {"total_pages": 2},
+        },
+        ConnectionError("la API dejó de responder"),
+    ]
+    mock_flatten.side_effect = _flatten_que_falla_en("B")
+
+    procesados = _service(client, db).sync_once()
+
+    assert procesados == 1
+    cierre = db.finish_sync_run.call_args.kwargs
+    assert cierre["status"] == "failed"
+    assert "dejó de responder" in cierre["error_message"]
+    assert "B" in cierre["error_message"]
+    assert cierre["last_release_date"] == datetime(2026, 1, 10, 10, 0, tzinfo=timezone.utc)
+
+
+@patch("src.application.sync_service.record_to_dataframes")
+def test_progreso_de_cada_pagina_respeta_los_fallidos(mock_flatten):
+    """El progreso parcial queda como checkpoint si el proceso muere a mitad,
+    así que tampoco puede pasar de un record fallido."""
+    db = _db()
+    fechas = {
+        "A": "2026-01-10T11:30:00Z",
+        "B": "2026-01-10T10:00:00Z",
+        "C": "2026-01-10T11:45:00Z",
+    }
+    client = _client_con_fechas_en_listado([["A", "B"], ["C"]], fechas)
+    mock_flatten.side_effect = _flatten_que_falla_en("B")
+
+    _service(client, db).sync_once()
+
+    fechas_progreso = [
+        c.kwargs["last_release_date"] for c in db.update_sync_progress.call_args_list
+    ]
+    diez = datetime(2026, 1, 10, 10, 0, tzinfo=timezone.utc)
+    assert fechas_progreso == [diez, diez]
