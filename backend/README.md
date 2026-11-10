@@ -85,7 +85,7 @@ Estos son los valores de `.env.example`, en el mismo orden:
 | `SOURCE_TIMEZONE` | `America/Asuncion` | Zona horaria con la que se arma la fecha de inicio de cada consulta |
 | Worker -> API | | |
 | `INTERNAL_SECRET` | `change-me` | Clave con la que el worker le pide a la API que limpie su caché. Cambiarla al desplegar: la API avisa en el log si sigue en `change-me` |
-| `API_INTERNAL_URL` | `http://api:8000` | Dirección de la API vista desde el worker |
+| `API_INTERNAL_URL` | `http://api:8000` | Dirección de la API vista desde el worker. `http://api:8000` sirve con Docker Compose; si el worker corre en otra máquina, poner la URL pública de la API |
 | Indicadores | | |
 | `INDICATORS_START_DATE` | `2020-01-01` | Solo cuentan casos con fecha entre este día y hoy |
 | API | | |
@@ -162,6 +162,43 @@ máquina):
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.local.yml up -d db
+```
+
+## Producción
+
+La API y el worker son procesos independientes: solo comparten la base de datos, y al terminar
+cada ejecución el worker le pide a la API que limpie su caché. Se pueden levantar juntos con
+Docker Compose o en máquinas distintas. Si van separados, en el `.env` del worker
+`API_INTERNAL_URL` tiene que ser la URL pública de la API, e `INTERNAL_SECRET` tiene que ser el
+mismo en los dos.
+
+La API se despliega con el `Dockerfile` (toma el puerto de la variable `PORT`) o con `uvicorn`
+en cualquier servicio que ejecute Python.
+
+Antes de levantar el worker, la base de producción tiene que tener las tablas de `schema.sql` y
+el histórico cargado (pasos 3 y 4 de [Primera vez](#primera-vez-base-vacía)).
+
+### Worker como servicio
+
+En el servidor, el worker corre como un servicio de systemd (`ocds-worker`) con
+`Restart=always` que ejecuta `.venv/bin/python -m src.interfaces.worker` desde `backend/`. Así
+arranca solo al iniciar el servidor y se reinicia si se cae. El `.env` va en `backend/`, porque
+el worker lo lee de la carpeta en la que corre. Los logs se ven con:
+
+```bash
+journalctl -u ocds-worker -f
+```
+
+### Actualizar el worker
+
+El servicio ejecuta directamente el Python de `.venv`, sin `uv run`, así que al reiniciar no se
+instalan las dependencias nuevas. Por eso hay que correr `uv sync` antes de reiniciar. Desde la
+carpeta del repo en el servidor:
+
+```bash
+git pull
+cd backend && uv sync --frozen --no-dev
+sudo systemctl restart ocds-worker
 ```
 
 ## API
