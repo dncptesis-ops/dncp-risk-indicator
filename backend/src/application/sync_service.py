@@ -51,6 +51,23 @@ def _parse_release_date(value) -> datetime | None:
     return _as_utc(parsed)
 
 
+def _ancla_checkpoint(last_processed_date, fechas_fallidas: dict, window_start):
+    """Fecha que se puede guardar como checkpoint sin saltear ningún fallido.
+
+    Sin fallidos, es la máxima fecha procesada. Con fallidos, no pasa del más
+    antiguo; si de alguno no se conoce la fecha, vuelve al inicio de la ventana.
+    """
+    if not fechas_fallidas:
+        return last_processed_date
+    fechas = list(fechas_fallidas.values())
+    if any(f is None for f in fechas):
+        return window_start
+    ancla = min(fechas)
+    if last_processed_date is not None and last_processed_date < ancla:
+        ancla = last_processed_date
+    return ancla
+
+
 class SyncService:
     def __init__(
         self,
@@ -134,6 +151,9 @@ class SyncService:
         failed_ocids = []
         fechas_fallidas = {}
         vistos = set()
+        # Fecha de cada proceso según el listado: es la única que se conoce
+        # si después falla la descarga del record.
+        fechas_listado = {}
         status = "success"
         error_message = None
         try:
@@ -159,6 +179,12 @@ class SyncService:
                         continue
                     vistos.add(ocid)
                     ocids.append(ocid)
+                    fecha_listado = _parse_release_date(
+                        (r.get("compiledRelease") or {}).get("date")
+                    )
+                    if fecha_listado is not None and fecha_listado > techo:
+                        fecha_listado = techo
+                    fechas_listado[ocid] = fecha_listado
                 logger.info(
                     f"Página {page}: {len(ocids)} ocids | RSS proc={_rss_mb():.1f} MiB hijos={_children_rss_mb():.1f} MiB"
                 )
@@ -166,6 +192,7 @@ class SyncService:
                 for ocid, record_package in self._iter_records_concurrently(ocids):
                     if record_package is None:
                         failed_ocids.append(ocid)
+                        fechas_fallidas[ocid] = fechas_listado.get(ocid)
                         continue
                     # Se inicializa fuera del try: si el paquete viene malformado,
                     # el bloque except necesita la variable ya definida.
@@ -201,7 +228,9 @@ class SyncService:
                         failed_ocids.append(ocid)
                         # Un record corrupto no corta la ejecución:
                         # el checkpoint no avanza mas alla de su fecha.
-                        fechas_fallidas[ocid] = fecha
+                        fechas_fallidas[ocid] = (
+                            fecha if fecha is not None else fechas_listado.get(ocid)
+                        )
 
                 # Retencion: la base guarda el estado actual (1 version por
                 # ocid), no el historial de versiones recompiladas.
@@ -212,10 +241,16 @@ class SyncService:
                 pagination = response.get("pagination", {})
                 total_pages = pagination.get("total_pages", 1)
 
+                # El progreso parcial también respeta los fallidos: si el
+                # proceso muere aquí, esta fecha queda como checkpoint.
                 self.db_repo.update_sync_progress(
                     run_id=run_id,
                     last_release_date=(
-                        last_processed_date if total_records_processed > 0 else None
+                        _ancla_checkpoint(
+                            last_processed_date, fechas_fallidas, window_start
+                        )
+                        if total_records_processed > 0
+                        else None
                     ),
                     records_processed=total_records_processed,
                 )
@@ -232,8 +267,6 @@ class SyncService:
             )
             if failed_ocids:
                 status = "failed"
-                fechas = [f for f in fechas_fallidas.values() if f]
-                last_processed_date = min(fechas) if fechas else window_start
                 error_message = (
                     f"{len(failed_ocids)} records con error: " f"{failed_ocids[:10]}"
                 )
@@ -242,7 +275,16 @@ class SyncService:
         except Exception as e:
             status = "failed"
             error_message = str(e)
+            if failed_ocids:
+                error_message += (
+                    f" | {len(failed_ocids)} records con error: {failed_ocids[:10]}"
+                )
             logger.error(f"Sincronización fallida: {e}")
+
+        # Con o sin interrupción, el checkpoint no pasa del fallido más antiguo.
+        last_processed_date = _ancla_checkpoint(
+            last_processed_date, fechas_fallidas, window_start
+        )
 
         try:
             self.db_repo.finish_sync_run(
