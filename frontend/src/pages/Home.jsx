@@ -1,6 +1,16 @@
 import { useRef } from 'react';
-import { Box, Container, Flex, Heading, Icon, List, SimpleGrid, Text } from '@chakra-ui/react';
-import { Building2, FileX, Edit3, Database, Eye, MousePointerClick } from 'lucide-react';
+import {
+  Box,
+  Container,
+  Flex,
+  Heading,
+  Icon,
+  Link,
+  List,
+  SimpleGrid,
+  Text,
+} from '@chakra-ui/react';
+import { Building2, Code, FileX, Edit3, Database, Eye, MousePointerClick } from 'lucide-react';
 import useCachedIndicatorData from '../hooks/useCachedIndicatorData';
 import { fetchR018Kpi } from '../features/r018/services/r018Service';
 import { fetchR063Kpi } from '../features/r063/services/r063Service';
@@ -242,8 +252,7 @@ export default function Home() {
         borderColor='blue.600'
       >
         <Container maxW='6xl'>
-          {/* <SimpleGrid columns={{ base: 1, md: 3 }} gap={8} mb={8}> */}
-          <SimpleGrid columns={{ base: 1, md: 2 }} gap={8} mb={8}>
+          <SimpleGrid columns={{ base: 1, md: 3 }} gap={8} mb={8}>
             <Box>
               <Text fontWeight='bold' color='white' fontSize='lg' mb={3}>
                 Control Ciudadano DNCP
@@ -253,16 +262,17 @@ export default function Home() {
               </Text>
             </Box>
 
-            {/* <Box>
+            <Box>
               <Text fontWeight='bold' color='white' fontSize='lg' mb={3}>
                 Código Abierto
               </Text>
               <Text fontSize='sm' lineHeight='tall' mb={3}>
                 Todo el código de esta plataforma está disponible públicamente. Creemos que la
-                transparencia empieza por casa.
+                transparencia empieza por casa. Si encuentra un error en un indicador, puede
+                informarlo en el repositorio.
               </Text>
               <Link
-                href='https://github.com'
+                href='https://github.com/dncptesis-ops/dncp-risk-indicator'
                 target='_blank'
                 rel='noopener noreferrer'
                 color='blue.400'
@@ -273,10 +283,10 @@ export default function Home() {
                 gap={2}
                 _hover={{ color: 'blue.300' }}
               >
-                <Icon as={Code2} boxSize={4} />
+                <Icon as={Code} boxSize={4} />
                 Ver repositorio en GitHub
               </Link>
-            </Box> */}
+            </Box>
 
             <Box>
               <Text fontWeight='bold' color='white' fontSize='lg' mb={3}>
@@ -297,8 +307,9 @@ export default function Home() {
           <Box borderTop='1px solid' borderColor='gray.700' pt={6}>
             <DataUpdatedAt textAlign='center' color='gray.400' mb={2} />
             <Text fontSize='xs' textAlign='center' color='gray.500'>
-              &copy; {new Date().getFullYear()} Control Ciudadano DNCP — Universidad Autónoma de
-              Asunción (UAA). Todos los derechos reservados.
+              Control Ciudadano DNCP — Proyecto académico de la Universidad Autónoma de Asunción
+              (UAA). Código bajo licencia MIT; datos de la Dirección Nacional de Contrataciones
+              Públicas (DNCP).
             </Text>
           </Box>
         </Container>
