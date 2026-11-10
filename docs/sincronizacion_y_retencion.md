@@ -60,12 +60,18 @@ El detalle de cómo la API interpreta las fechas está en
 Cada ejecución queda registrada en `sync_log`, y el progreso se guarda al terminar
 cada página.
 
-Si un proceso no se puede cargar, la ejecución no se corta:
+Si un proceso no se puede descargar o cargar, la ejecución no se corta:
 
 1. se sigue con el resto;
 2. la ejecución termina como `failed` y guarda los primeros 10 procesos con error;
-3. el checkpoint queda en la fecha del proceso que falló, así la siguiente ejecución
-   lo vuelve a intentar.
+3. el checkpoint queda en la fecha del proceso fallido más antiguo, así la siguiente
+   ejecución lo vuelve a intentar. Si falló la descarga, la fecha se toma del listado
+   (`compiledRelease.date`); si no se conoce la fecha de algún fallido, el checkpoint
+   vuelve al inicio de la ventana y la siguiente ejecución la recorre entera.
+
+La misma regla vale para el progreso que se guarda al final de cada página y para una
+ejecución que se interrumpe (por ejemplo, si la API deja de responder): el checkpoint
+nunca pasa de un proceso que falló.
 
 Volver a cargar algo que ya estaba no genera duplicados, porque la carga reemplaza
 por clave primaria (*upsert*). Al arrancar, el worker marca como `failed` las
